@@ -18,7 +18,8 @@ uint16_t BS811X::readKeys()
 {
     _prev_state = _keys;
     _keys = 0;
-    Wire.requestFrom(_address,(uint8_t) 2,(uint8_t) 0x08,(uint8_t) 1,(uint8_t) true);
+    //Wire.requestFrom(_address,(uint8_t) 2,(uint8_t) 0x08,(uint8_t) 1,(uint8_t) true);
+    Wire.requestFrom(_address, 2, true);
     byte *buffer = (byte*) &_keys;
     uint8_t i = 0;
     while(Wire.available()) {
@@ -30,7 +31,8 @@ uint16_t BS811X::readKeys()
 
 bool BS811X::readSetting(uint8_t * array) 
 {
-    Wire.requestFrom(_address,(uint8_t) _length,(uint8_t) 0xB0,(uint8_t) 1,(uint8_t) true);
+    //Wire.requestFrom(_address,(uint8_t) _length,(uint8_t) 0xB0,(uint8_t) 1,(uint8_t) true);
+    Wire.requestFrom(_address, _length, true);
     uint8_t i = 0;
     while(Wire.available()) {
         byte buffer = Wire.read();
