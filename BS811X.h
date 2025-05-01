@@ -49,6 +49,10 @@ public:
     // Return true if the initialize process has been a success
     // param chip type
     bool begin(String chip);
+
+private:
+    uint8_t requestFromWire(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize, uint8_t sendStop);
+
 };
 
 

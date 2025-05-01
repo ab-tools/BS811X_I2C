@@ -14,12 +14,34 @@
     return number;
 }*/
 
+uint8_t BS811X::requestFromWire(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize, uint8_t sendStop)
+{
+  if (isize > 0) {
+    // send internal address; this mode allows sending a repeated start to access
+    // some devices' internal registers. This function is executed by the hardware
+    // TWI module on other processors (for example Due's TWI_IADR and TWI_MMR registers)
+
+    Wire.beginTransmission(address);
+
+    // the maximum size of internal address is 3 bytes
+    if (isize > 3){
+        isize = 3;
+    }
+
+    // write internal register address - most significant byte first
+    while (isize-- > 0)
+        Wire.write((uint8_t)(iaddress >> (isize*8)));
+    Wire.endTransmission(false);
+  }
+
+  return Wire.requestFrom(_address, _length, true);
+}
+
 uint16_t BS811X::readKeys() 
 {
     _prev_state = _keys;
     _keys = 0;
-    //Wire.requestFrom(_address,(uint8_t) 2,(uint8_t) 0x08,(uint8_t) 1,(uint8_t) true);
-    Wire.requestFrom(_address, 2, true);
+    requestFromWire(_address,(uint8_t) 2,(uint8_t) 0x08,(uint8_t) 1,(uint8_t) true);
     byte *buffer = (byte*) &_keys;
     uint8_t i = 0;
     while(Wire.available()) {
@@ -31,8 +53,7 @@ uint16_t BS811X::readKeys()
 
 bool BS811X::readSetting(uint8_t * array) 
 {
-    //Wire.requestFrom(_address,(uint8_t) _length,(uint8_t) 0xB0,(uint8_t) 1,(uint8_t) true);
-    Wire.requestFrom(_address, _length, true);
+    requestFromWire(_address,(uint8_t) _length,(uint8_t) 0xB0,(uint8_t) 1,(uint8_t) true);
     uint8_t i = 0;
     while(Wire.available()) {
         byte buffer = Wire.read();
