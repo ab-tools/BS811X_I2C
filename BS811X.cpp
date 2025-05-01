@@ -34,7 +34,7 @@ uint8_t BS811X::requestFromWire(uint8_t address, uint8_t quantity, uint32_t iadd
     Wire.endTransmission(false);
   }
 
-  return Wire.requestFrom(_address, _length, true);
+  return Wire.requestFrom(address, quantity, true);
 }
 
 uint16_t BS811X::readKeys() 
