@@ -106,7 +106,19 @@ bool BS811X::begin(String chip)
     else if(chip == "8112") { _length = 17; }
     Wire.begin();
     delay(10);
-    setSetting();
+    // setSetting() returns the I2C endTransmission() status:
+    //   0 = success, 1 = data too long, 2 = NACK on address,
+    //   3 = NACK on data, 4 = other error, 5 = timeout
+    uint8_t result = setSetting();
     delay(10);
-    return (Wire.available() != 0);
+    if (result == 0)
+    {
+        Serial.println("BS811X: settings write successful");
+    }
+    else
+    {
+        Serial.print("BS811X: settings write FAILED, I2C error code ");
+        Serial.println(result);
+    }
+    return (result == 0);
 }
