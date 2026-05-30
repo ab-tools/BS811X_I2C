@@ -105,12 +105,29 @@ bool BS811X::begin(String chip)
     if(chip == "8116") { _length = 21; }
     else if(chip == "8112") { _length = 17; }
     Wire.begin();
-    delay(10);
+    delay(150); // datasheet power-on stabilisation time: typ 125 ms, max 150 ms
+
+    // At power-up the chip is still in its low-power (LSC) scan, during which it clock-stretches
+    // I2C for up to a full scan cycle (key response time typ 600 ms, max 1000 ms per datasheet).
+    // The default 1000 ms Wire timeout sits right at that limit, so the option write times out
+    // (error 5) and the configuration -- including LSC=0 -- is never applied. Give the write
+    // enough head-room to ride out the stretch, and retry until the chip accepts it.
+    uint32_t prevTimeout = Wire.getTimeout();
+    Wire.setTimeout(1500, true); // > max clock-stretch; reset/recover the bus on timeout
+
     // setSetting() returns the I2C endTransmission() status:
     //   0 = success, 1 = data too long, 2 = NACK on address,
     //   3 = NACK on data, 4 = other error, 5 = timeout
-    uint8_t result = setSetting();
-    delay(10);
+    uint8_t result = 5;
+    for (uint8_t attempt = 0; attempt < 3 && result != 0; attempt++)
+    {
+        result = setSetting();
+        if (result != 0)
+            delay(50);
+    }
+
+    Wire.setTimeout(prevTimeout); // restore the previous timeout for normal polling
+
     if (result == 0)
     {
         Serial.println("BS811X: settings write successful");
