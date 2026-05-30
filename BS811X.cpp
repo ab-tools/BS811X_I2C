@@ -105,49 +105,38 @@ bool BS811X::begin(String chip)
     if(chip == "8116") { _length = 21; }
     else if(chip == "8112") { _length = 17; }
     Wire.begin();
-    delay(150); // datasheet power-on stabilisation time: typ 125 ms, max 150 ms
+    delay(10);
 
-    // At power-up the chip is still in its low-power (LSC) scan, during which it clock-stretches
-    // I2C for up to a full scan cycle (key response time typ 600 ms, max 1000 ms per datasheet).
-    // The default 1000 ms Wire timeout sits right at that limit, so the option write times out
-    // (error 5) and the configuration -- including LSC=0 -- is never applied. Give the write
-    // enough head-room to ride out the stretch, and retry until the chip accepts it.
-    uint32_t prevTimeout = Wire.getTimeout();
-    Wire.setTimeout(1500, true); // > max clock-stretch; reset/recover the bus on timeout
-
+    // One option-write attempt using whatever Wire timeout the caller has set. The chip only
+    // accepts I2C while it is awake; if it is idle it clock-stretches and this times out (error 5).
+    // The caller is expected to keep a short bus timeout and retry begin()/setSetting() until it
+    // succeeds (which happens once the chip is woken, e.g. by a key touch).
     // setSetting() returns the I2C endTransmission() status:
     //   0 = success, 1 = data too long, 2 = NACK on address,
     //   3 = NACK on data, 4 = other error, 5 = timeout
-    uint8_t result = 5;
-    for (uint8_t attempt = 0; attempt < 3 && result != 0; attempt++)
-    {
-        result = setSetting();
-        if (result != 0)
-            delay(50);
-    }
+    uint8_t result = setSetting();
 
     bool verified = false;
     if (result == 0)
     {
         Serial.println("BS811X: settings write successful");
 
-        // Read the option registers back to confirm the configuration actually took effect.
-        // An I2C ACK alone does not prove the chip stored the values (e.g. checksum rejected).
+        // An I2C ACK alone does not prove the chip stored the values (e.g. checksum rejected),
+        // so read the option registers back and confirm what we wrote actually took effect.
         uint8_t readback[21] = {0};
         readSetting(readback);
         // readback[4] = register 0xB4 (Option2); bit6 is LSC. Expect the value we sent (DATA5).
         uint8_t expectedOption2 = (_length == 21) ? _settings_1[5] : _settings_2[5];
-        uint8_t actualOption2 = readback[4];
-        verified = (actualOption2 == expectedOption2);
+        verified = (readback[4] == expectedOption2);
         if (verified)
         {
             Serial.print("BS811X: settings verified, Option2 (0xB4) = 0x");
-            Serial.println(actualOption2, HEX);
+            Serial.println(readback[4], HEX);
         }
         else
         {
             Serial.print("BS811X: settings VERIFY FAILED, Option2 (0xB4) read back 0x");
-            Serial.print(actualOption2, HEX);
+            Serial.print(readback[4], HEX);
             Serial.print(", expected 0x");
             Serial.println(expectedOption2, HEX);
         }
@@ -158,6 +147,5 @@ bool BS811X::begin(String chip)
         Serial.println(result);
     }
 
-    Wire.setTimeout(prevTimeout); // restore the previous timeout for normal polling
     return (result == 0 && verified);
 }
