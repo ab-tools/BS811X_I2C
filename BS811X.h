@@ -18,8 +18,12 @@ class BS811X {
     uint16_t _keys = 0;
     uint16_t _prev_state = 0;
     uint8_t _length;
-    uint8_t _settings_1[23] = {0xB0,0,0,0x83,0xF3,0xD8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0xCE};
-    uint8_t _settings_2[19] = {0xB0,0,0,0x83,0xF3,0xD8,8,8,8,8,8,8,8,8,8,8,8,8,0xAE};
+    // DATA5 = Option2 (reg 0xB4): bit6 = LSC. LSC=1 (0xD8) -> low-power slow scan (~0.5-1s
+    // response time); the chip sleeps between scans and stretches the I2C clock while asleep,
+    // blocking the master for the full Wire timeout. LSC=0 (0x98) -> fast/active mode, always
+    // responsive. Last byte is CheckSum = (DATA1+...+DATAn) & 0xFF; recomputed for LSC=0.
+    uint8_t _settings_1[23] = {0xB0,0,0,0x83,0xF3,0x98,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0x8E};
+    uint8_t _settings_2[19] = {0xB0,0,0,0x83,0xF3,0x98,8,8,8,8,8,8,8,8,8,8,8,8,0x6E};
 
 public:
     // Constructor
