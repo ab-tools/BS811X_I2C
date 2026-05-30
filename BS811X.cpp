@@ -126,16 +126,38 @@ bool BS811X::begin(String chip)
             delay(50);
     }
 
-    Wire.setTimeout(prevTimeout); // restore the previous timeout for normal polling
-
+    bool verified = false;
     if (result == 0)
     {
         Serial.println("BS811X: settings write successful");
+
+        // Read the option registers back to confirm the configuration actually took effect.
+        // An I2C ACK alone does not prove the chip stored the values (e.g. checksum rejected).
+        uint8_t readback[21] = {0};
+        readSetting(readback);
+        // readback[4] = register 0xB4 (Option2); bit6 is LSC. Expect the value we sent (DATA5).
+        uint8_t expectedOption2 = (_length == 21) ? _settings_1[5] : _settings_2[5];
+        uint8_t actualOption2 = readback[4];
+        verified = (actualOption2 == expectedOption2);
+        if (verified)
+        {
+            Serial.print("BS811X: settings verified, Option2 (0xB4) = 0x");
+            Serial.println(actualOption2, HEX);
+        }
+        else
+        {
+            Serial.print("BS811X: settings VERIFY FAILED, Option2 (0xB4) read back 0x");
+            Serial.print(actualOption2, HEX);
+            Serial.print(", expected 0x");
+            Serial.println(expectedOption2, HEX);
+        }
     }
     else
     {
         Serial.print("BS811X: settings write FAILED, I2C error code ");
         Serial.println(result);
     }
-    return (result == 0);
+
+    Wire.setTimeout(prevTimeout); // restore the previous timeout for normal polling
+    return (result == 0 && verified);
 }
